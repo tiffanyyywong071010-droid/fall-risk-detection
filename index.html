@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fall Risk Detection Demo</title>
+    <script src="sdelivr.net/npm/@tensorflow/tfjs@latest</script>
+    https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 20px; }
+        video { border: 2px solid #333; border-radius: 8px; }
+        #status { font-size: 24px; margin-top: 20px; font-weight: bold; }
+        button { margin-top: 15px; padding: 10px 20px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>Fall Risk Detection Demo</h1>
+    <video id="webcam" autoplay playsinline width="400" height="300"></video>
+    <div id="status">Loading model...</div>
+    alert.mp3</audio>
+    <button id="toggleBtn">Stop Detection</button>
+
+    <script>
+        let model;
+        let net;
+        let running = true;
+        const webcamElement = document.getElementById('webcam');
+        const statusElement = document.getElementById('status');
+        const alertSound = document.getElementById('alertSound');
+        const toggleBtn = document.getElementById('toggleBtn');
+
+        async function setupWebcam() {
+            return new Promise((resolve, reject) => {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        webcamElement.srcObject = stream;
+                        webcamElement.addEventListener('loadeddata', () => resolve(), false);
+                    })
+                    .catch(err => reject(err));
+            });
+        }
+
+        async function loadModel() {
+            model = await tf.loadLayersModel('model/model.json');
+            net = await posenet.load({ architecture: 'MobileNetV1', outputStride: 16, inputResolution: 257, multiplier: 0.75 });
+            statusElement.innerText = 'Model Loaded. Starting detection...';
+        }
+
+        async function predict() {
+            if (!running) return;
+            const pose = await net.estimateSinglePose(webcamElement, { flipHorizontal: false });
+            const keypoints = pose.keypoints.map(kp => kp.score);
+            const inputTensor = tf.tensor([keypoints]);
+            const prediction = model.predict(inputTensor);
+            const result = prediction.argMax(-1).dataSync()[0];
+
+            let label;
+            if (result === 0) label = 'Stable';
+            else if (result === 1) label = 'Transitional';
+            else label = 'Unstable ⚠️';
+
+            statusElement.innerText = `Status: ${label}`;
+
+            if (label.includes('Unstable')) {
+                alertSound.play();
+            }
+
+            requestAnimationFrame(predict);
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            running = !running;
+            toggleBtn.innerText = running ? 'Stop Detection' : 'Start Detection';
+            if (running) predict();
+        });
+
+        async function init() {
+            await setupWebcam();
+            await loadModel();
+            predict();
+        }
+
+        init();
+    </script>
+</body>
+</html>
