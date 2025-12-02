@@ -3,11 +3,19 @@
 <head>
     <title>Fall Risk Detection Demo</title>
     https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest</script>
-    https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet
+    https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet</script>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 20px; }
         video { border: 2px solid #333; border-radius: 8px; }
-        #status { font-size: 24px; margin-top: 20px; font-weight: bold; }
+        #status {
+            font-size: 24px;
+            margin-top: 20px;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            color: white;
+        }
         button { margin-top: 15px; padding: 10px 20px; font-size: 16px; }
     </style>
 </head>
@@ -42,6 +50,7 @@
             model = await tf.loadLayersModel('model/model.json');
             net = await posenet.load({ architecture: 'MobileNetV1', outputStride: 16, inputResolution: 257, multiplier: 0.75 });
             statusElement.innerText = 'Model Loaded. Starting detection...';
+            statusElement.style.backgroundColor = '#666';
         }
 
         async function predict() {
@@ -53,11 +62,13 @@
             const result = prediction.argMax(-1).dataSync()[0];
 
             let label;
-            if (result === 0) label = 'Stable';
-            else if (result === 1) label = 'Transitional';
-            else label = 'Unstable ⚠️';
+            let color;
+            if (result === 0) { label = 'Stable'; color = 'green'; }
+            else if (result === 1) { label = 'Transitional'; color = 'orange'; }
+            else { label = 'Unstable ⚠️'; color = 'red'; }
 
             statusElement.innerText = `Status: ${label}`;
+            statusElement.style.backgroundColor = color;
 
             if (label.includes('Unstable')) {
                 alertSound.play();
